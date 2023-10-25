@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+
+attribute vec4 vPosition;
+attribute vec4 vNormal;
+varying vec3 NPhong, LPhong, EPhong; //not in Blinn Phong
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform vec4 lightPosition;
+uniform mat3 normalMatrix;
+
+
+uniform int vertexBool;
+
+//FROM FlotKula
+varying vec4 tempColor; //not in Phong
+uniform vec4 ambientProductBlinnPhong; 
+uniform vec4 diffuseProductBlinnPhong;
+uniform vec4 specularProductBlinnPhong; //not in Phong
+uniform float shininessBlinnPhong; //not in Phong
+
+void main()
+{
+    if(vertexBool == 1){
+        vec3 pos = (modelViewMatrix * vPosition).xyz;
+
+        // check for directional light
+        if(lightPosition.w == 0.0) LPhong = normalize(lightPosition.xyz);
+        else LPhong = normalize( lightPosition.xyz - pos );
+
+        EPhong =  -normalize(pos);
+        NPhong = normalize( normalMatrix*vNormal.xyz);
+
+        gl_Position = projectionMatrix * modelViewMatrix * vPosition;
+    }
+    else {
+        // pos is vertex position in eye coordinates
+        vec3 pos = (modelViewMatrix * vPosition).xyz;
+    
+        // vector from vertex position to light source
+        vec3 L;
+    
+        // check for directional light
+        if(lightPosition.w == 0.0) L = normalize(lightPosition.xyz);
+        else L = normalize( lightPosition.xyz - pos );
+    
+        // Because the eye point the is at the orgin
+        // the vector from the vertex position to the eye is
+        vec3 E = -normalize( pos );
+    
+        // halfway vector
+        vec3 H = normalize( L + E );
+    
+        // Transform vertex normal into eye coordinates
+        vec3 N = normalize( normalMatrix*vNormal.xyz);
+    
+    
+        // Compute terms in the illumination equation
+        vec4 ambient = ambientProductBlinnPhong;
+    
+        float Kd = max( dot(L, N), 0.0 );
+        vec4  diffuse = Kd*diffuseProductBlinnPhong;
+    
+        float Ks = pow( max(dot(N, H), 0.0), shininessBlinnPhong );
+        vec4  specular = Ks * specularProductBlinnPhong;
+    
+        if( dot(L, N) < 0.0 ) {
+            specular = vec4(0.0, 0.0, 0.0, 1.0);
+        }
+    
+        gl_Position = projectionMatrix * modelViewMatrix * vPosition;
+    
+        tempColor = ambient + diffuse +specular;
+    
+        tempColor.a = 1.0;
+
+    }
+
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+
+uniform vec4 ambientProduct;
+uniform vec4 diffuseProduct;
+uniform vec4 specularProduct;
+uniform float shininess;
+uniform int fragmentBool;
+varying vec3 NPhong, LPhong, EPhong;
+
+//From FlotKula
+varying vec4 tempColor;
+
+void main()
+{
+    if(fragmentBool == 1){
+        vec4 fColor;
+
+        vec3 H = normalize( LPhong + EPhong );
+        vec4 ambient = ambientProduct;
+
+        float Kd = max( dot(LPhong, NPhong), 0.0 );
+        vec4  diffuse = Kd*diffuseProduct;
+
+        float Ks = pow( max(dot(NPhong, H), 0.0), shininess );
+        vec4  specular = Ks * specularProduct;
+
+        if( dot(LPhong, NPhong) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+
+        fColor = ambient + diffuse +specular;
+        fColor.a = 1.0;
+        gl_FragColor = fColor;
+    }
+    else{
+        gl_FragColor = tempColor;
+    }
+    
+}
+</script>
+
+<script type="text/javascript" src="../Common/webgl-utils.js"></script>
+<script type="text/javascript" src="../Common/initShaders.js"></script>
+<script type="text/javascript" src="../Common/MV.js"></script>
+<script type="text/javascript" src="teapotData.js"></script>
+<script type="text/javascript" src="PhongAndBlinnPhongTepottur.js"></script>
+
+<body>
+Ýtið á <b>P</b> til að nota Phong <br>
+Ýtið á <b>B</b> til að nota Blinn-Phong<br>
+ <canvas id="gl-canvas" width="600" height="600">
+</body>
+</html>
